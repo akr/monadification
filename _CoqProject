@@ -1,0 +1,22 @@
+-Q theories Monadification
+-I src
+-Q sample Monadification.sample
+
+src/g_monadification.ml4
+src/monadification.ml
+src/monadification_plugin.mllib
+theories/monadification.v
+
+sample/mona.v
+sample/nth.v
+sample/numcons_coq.v
+sample/numcons_ssr.v
+sample/numcons_ssr.v
+sample/test_monad.v
+sample/test_seq.v
+sample/listutils.v
+sample/natutils.v
+sample/bits.v
+sample/rank.v
+sample/rank_success.v
+sample/rank_complexity.v
