@@ -13,13 +13,14 @@ https://github.com/akr/monadification
 
 - Coq 8.6 (Coq 8.5 doesn't work)
 
-## How to build
+## How to build and install
 
     make
+    make install
 
 ## How to run
 
-    coqide -I src -Q theories monadification sample/pow.v
+    coqide sample/pow.v
 
 ## How to use
 
