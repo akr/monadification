@@ -19,4 +19,7 @@ clean :
 	  src/*.d \
 	  theories/*.glob \
 	  theories/*.vo \
-	  theories/*.d
+	  theories/*.d \
+	  sample/*.glob \
+	  sample/*.vo \
+	  sample/*.d

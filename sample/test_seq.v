@@ -1,5 +1,5 @@
 From mathcomp Require Import ssreflect ssrbool eqtype ssrfun ssrnat seq.
-Require Import Monadification.monadification.
+Require Import monadification.monadification.
 
 Module Type Monad.
 Parameter M : Type -> Type.

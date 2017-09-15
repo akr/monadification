@@ -19,7 +19,7 @@ https://github.com/akr/monadification
 
 ## How to run
 
-    coqide -I src -Q theories Monadification sample/pow.v
+    coqide -I src -Q theories monadification sample/pow.v
 
 ## How to use
 

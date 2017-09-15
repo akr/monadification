@@ -2,11 +2,11 @@
 
 From mathcomp Require Import ssreflect ssrbool eqtype ssrnat seq ssrfun.
 From mathcomp Require Import div prime.
-Require Import Monadification.monadification.
+Require Import monadification.monadification.
 
-Require Import Monadification.sample.listutils.
-Require Import Monadification.sample.natutils.
-Require Import Monadification.sample.bits.
+Require Import monadification.sample.listutils.
+Require Import monadification.sample.natutils.
+Require Import monadification.sample.bits.
 
 (* specification of rank *)
 Definition rank (b : bool) i s := count_mem b (take i s).

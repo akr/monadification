@@ -1,5 +1,5 @@
 From mathcomp Require Import ssreflect ssrbool eqtype ssrfun ssrnat seq.
-Require Import Monadification.monadification.
+Require Import monadification.monadification.
 
 Set Monadification Verbose. (* show the original definition and the monadified definition *)
 

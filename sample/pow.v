@@ -1,7 +1,7 @@
 From mathcomp Require Import ssreflect ssrbool eqtype ssrfun ssrnat.
-Require Import Monadification.sample.natutils.
+Require Import monadification.sample.natutils.
 
-Require Import Monadification.monadification.
+Require Import monadification.monadification.
 
 Fixpoint pow a k :=
   match k with

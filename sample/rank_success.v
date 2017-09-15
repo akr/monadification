@@ -2,13 +2,13 @@
 
 From mathcomp Require Import ssreflect ssrbool eqtype ssrnat seq ssrfun.
 From mathcomp Require Import div prime.
-Require Import Monadification.monadification.
+Require Import monadification.monadification.
 
-Require Import Monadification.sample.listutils.
-Require Import Monadification.sample.natutils.
-Require Import Monadification.sample.bits.
+Require Import monadification.sample.listutils.
+Require Import monadification.sample.natutils.
+Require Import monadification.sample.bits.
 
-Require Import Monadification.sample.rank.
+Require Import monadification.sample.rank.
 
 Definition ret {A} (x : A) := Some x.
 Definition bind {A} {B} (x' : option A) (f : A -> option B) :=
