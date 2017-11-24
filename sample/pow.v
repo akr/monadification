@@ -36,6 +36,8 @@ Fixpoint fastpow_iter a k x :=
 
 Definition fastpow a k := fastpow_iter a k 1.
 
+Require FunInd.
+
 Functional Scheme fastpowiter_ind := Induction for fastpow_iter Sort Prop.
 
 Lemma fastpowiter_expn a k x : fastpow_iter a k x = expn a k * x.

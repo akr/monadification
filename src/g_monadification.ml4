@@ -21,19 +21,20 @@ let () = Mltop.add_known_plugin (fun () ->
   "monadification"
 ;;
 
-DECLARE PLUGIN "monadification_plugin"
-
 open Monadification
 
-open Constrarg (* for ident(...) *)
-open Extraargs (* for lconstr(...). lconstr accepts "PrintTerm 1 + 1" addition to "PrintTerm (1 + 1)" *)
+(*open Constrarg*) (* for ident(...) *)
+open Stdarg
+(*open Extraargs*) (* for lconstr(...). lconstr accepts "PrintTerm 1 + 1" addition to "PrintTerm (1 + 1)" *)
+
+DECLARE PLUGIN "monadification_plugin"
 
 VERNAC COMMAND EXTEND Monomorphisation CLASSIFIED AS SIDEFF
     | [ "Monadify" "Reset" ] -> [ mona_reset () ]
-    | [ "Monadify" "Return" lconstr(c) ] -> [ mona_return_set c ]
-    | [ "Monadify" "Bind" lconstr(c) ] -> [ mona_bind_set c ]
-    | [ "Monadify" "Type" lconstr(c) ] -> [ mona_type_set c ]
-    | [ "Monadify" "Action" global(libref) "=>" lconstr(c) ] -> [ mona_action_add libref c ]
+    | [ "Monadify" "Return" (*l*)constr(c) ] -> [ mona_return_set c ]
+    | [ "Monadify" "Bind" (*l*)constr(c) ] -> [ mona_bind_set c ]
+    | [ "Monadify" "Type" (*l*)constr(c) ] -> [ mona_type_set c ]
+    | [ "Monadify" "Action" global(libref) "=>" (*l*)constr(c) ] -> [ mona_action_add libref c ]
     | [ "Monadify" "Pure" ne_global_list(libref_list) ] -> [ mona_pure_add libref_list ]
     | [ "Monadification" ne_global_list(libref_list) ] -> [ monadification libref_list ]
 END;;

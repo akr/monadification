@@ -178,22 +178,10 @@ Proof.
 Qed.
 
 Lemma ltn_neq0 m n : 1 < n -> m < n -> neq0 m < n.
-Proof.
-  rewrite /neq0.
-  case: m.
-    by rewrite /=.
-  move=> m.
-  by rewrite succnK.
-Qed.
+Proof. by case: m. Qed.
 
 Lemma leq_neq0 m n : 0 < n -> m <= n -> neq0 m <= n.
-Proof.
-  rewrite /neq0.
-  case: m.
-    by rewrite /=.
-  move=> m.
-  by rewrite succnK.
-Qed.
+Proof. by case: m. Qed.
 
 Lemma BuildDir2Success (b : bool) (s : bits) kp sz2 c ii D2 m2 :
   let k := kp.+1 in
@@ -651,4 +639,3 @@ Proof.
   rewrite -divnMA mulnA bcount_adjacent divnMA -mulnDl -divn_eq.
   by rewrite bcount_adjacent -divn_eq.
 Qed.
-
