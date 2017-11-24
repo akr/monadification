@@ -1,0 +1,4 @@
+FLG -rectypes
+S /home/affeldt/git/monadification/src/*
+S /home/affeldt/install/coq-8.7.0/**
+B /home/affeldt/install/coq-8.7.0/**
