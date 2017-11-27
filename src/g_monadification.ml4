@@ -25,7 +25,8 @@ DECLARE PLUGIN "monadification_plugin"
 
 open Monadification
 
-open Constrarg (* for ident(...) *)
+open Stdarg (* for ident(...) *)
+open Ltac_plugin
 open Extraargs (* for lconstr(...). lconstr accepts "PrintTerm 1 + 1" addition to "PrintTerm (1 + 1)" *)
 
 VERNAC COMMAND EXTEND Monomorphisation CLASSIFIED AS SIDEFF
