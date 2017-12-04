@@ -1,5 +1,6 @@
 -Q theories monadification
 -I src
+-Q src monadification
 -Q sample monadification.sample
 
 src/g_monadification.ml4
