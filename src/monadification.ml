@@ -22,8 +22,6 @@ open Pp
 open CErrors
 open Goptions
 
-open Term
-open Constr
 open EConstr
 
 let opt_verbose = ref false
@@ -79,9 +77,12 @@ let rec strip_outer_prods ndecls term =
 (* purelevel * rawty * term *)
 type monadic = (int * EConstr.types * EConstr.constr)
 
-let pr_monadic monadic =
+let pr_monadic env sigma monadic =
   let (purelevel, ty, term) = monadic in
-  hv 0 (str "monadic" ++ int purelevel ++ spc () ++ Printer.pr_econstr ty ++ spc () ++ Printer.pr_econstr term)
+  hv 0 (str "monadic" ++
+        int purelevel ++ spc () ++
+        Printer.pr_econstr_env env sigma ty ++ spc () ++
+        Printer.pr_econstr_env env sigma term)
 
 let pr_monadic_env env evd monadic =
   let (purelevel, ty, term) = monadic in
@@ -121,13 +122,13 @@ let rec prod_appvect sigma ty args =
     let args2 = Array.sub args numargs (Array.length args - numargs) in
     prod_appvect sigma (econstr_prod_appvect sigma ty args1) args2
 
-let pr_explain_monadic sigma m =
+let pr_explain_monadic env sigma m =
   let (purelevel, rawty, term) = m in
   let numargs = numargs_of_type sigma rawty in
   (if numargs < purelevel then
     str "is pure"
   else
-    str "=>" ++ spc () ++ Printer.pr_econstr term) ++
+    str "=>" ++ spc () ++ Printer.pr_econstr_env env sigma term) ++
   spc () ++ str "(purelevel=" ++ int purelevel ++ str ")"
 
 let monadic_is_pure sigma (m : monadic) =
@@ -342,7 +343,7 @@ let rec convert_type sigma pure_level ty =
         mkProd (argname, convert_type sigma 1 argty, convert_type sigma (pure_level-1) bodyty)
     | _ -> ty
 
-let rec monadify_type sigma purelevel ty =
+let rec monadify_type env sigma purelevel ty =
   (*Feedback.msg_debug (str "monadify_type:" ++ Printer.pr_econstr ty);*)
   let wrap_type ty0 =
     if purelevel = 0 then
@@ -353,22 +354,24 @@ let rec monadify_type sigma purelevel ty =
   match EConstr.kind sigma ty with
   | Term.Prod (name, namety, body) ->
       if purelevel = 0 then
-        mona_type0 (mkProd (name, monadify_type sigma 1 namety, monadify_type sigma 0 body))
+        mona_type0 (mkProd (name, monadify_type env sigma 1 namety, monadify_type env sigma 0 body))
       else
-        mkProd (name, monadify_type sigma 1 namety, monadify_type sigma (purelevel - 1) body)
+        mkProd (name, monadify_type env sigma 1 namety, monadify_type env sigma (purelevel - 1) body)
   | Term.Sort _ | Term.Rel _ | Term.Ind _ ->
       wrap_type ty
   | Term.App (f, args) ->
       wrap_type (match EConstr.kind sigma f with
       | Term.Ind (ind, u) ->
-          mkApp (mkIndU (ind, u), Array.map (monadify_type sigma 1) args)
+          mkApp (mkIndU (ind, u), Array.map (monadify_type env sigma 1) args)
       | _ ->
           (Feedback.msg_warning (hv 0
-            (str "monadify_type: unexpected type application:" ++ spc () ++ Printer.pr_econstr ty));
+            (str "monadify_type: unexpected type application:" ++ spc () ++
+              Printer.pr_econstr_env env sigma ty));
             ty))
   | _ ->
       (Feedback.msg_warning (hv 0
-        (str "monadify_type: unexpected type:" ++ spc () ++ Printer.pr_econstr ty));
+        (str "monadify_type: unexpected type:" ++ spc () ++
+          Printer.pr_econstr_env env sigma ty));
       wrap_type ty)
 
 let mona_return0 ty term =
@@ -382,11 +385,11 @@ let mona_bind0 ty1 ty2 term1 term2 =
   | Some bind -> mkApp (bind, [| ty1; ty2; term1; term2 |])
 
 (* puredown doesn't convert types. *)
-let rec puredown sigma j m =
+let rec puredown env sigma j m =
   let (i, (rawtermty : EConstr.constr), term) = m in
   if i < j then
     user_err ~hdr:"puredown"
-      (hv 0 (str "puredown: cannot up purelevel:" ++ spc () ++ pr_monadic m ++ spc () ++ hv 0 (str "to" ++ spc () ++ int j)))
+      (hv 0 (str "puredown: cannot up purelevel:" ++ spc () ++ pr_monadic env sigma m ++ spc () ++ hv 0 (str "to" ++ spc () ++ int j)))
   else if i = j then
     term
   else (* 0 <= j < i *)
@@ -395,22 +398,22 @@ let rec puredown sigma j m =
         (match EConstr.kind sigma term with
         | Term.Lambda (argname, argty, body) ->
             if j = 0 then
-              let body' = puredown sigma 0 (i-1, bodyty, body) in
-              mona_return0 (monadify_type sigma 1 rawtermty) (mkLambda (argname, argty, body'))
+              let body' = puredown env sigma 0 (i-1, bodyty, body) in
+              mona_return0 (monadify_type env sigma 1 rawtermty) (mkLambda (argname, argty, body'))
             else
-              let body' = puredown sigma (j-1) (i-1, bodyty, body) in
+              let body' = puredown env sigma (j-1) (i-1, bodyty, body) in
               mkLambda (argname, argty, body')
         | _ ->
             (* This eta-expansion should not delay side effect
                because 0 < i which means that e has no immediate side effect. *)
             let body' = mkApp (Vars.lift 1 term, [| mkRel 1 |]) in
-            puredown sigma j (i, rawtermty, mkLambda (Name.Anonymous, argty', body')))
+            puredown env sigma j (i, rawtermty, mkLambda (Name.Anonymous, argty', body')))
     | _ ->
-        mona_return0 (monadify_type sigma 1 rawtermty) term
+        mona_return0 (monadify_type env sigma 1 rawtermty) term
 
-let puredown' sigma j m =
+let puredown' env sigma j m =
   let (i, rawtermty, term) = m in
-  (j, rawtermty, puredown sigma j m)
+  (j, rawtermty, puredown env sigma j m)
 
 let rec pureapprox sigma term =
   match EConstr.kind sigma term with
@@ -428,7 +431,7 @@ let define_constant id term =
   (*Feedback.msg_debug (str "define_constant:2:" ++ Id.print id);*)
   Declare.declare_definition id
     (EConstr.to_constr !evdref term,
-     Monomorphic_const_entry (Evd.universe_context_set !evdref))
+     Entries.Monomorphic_const_entry (Evd.universe_context_set !evdref))
 
 let rec find_unused_name id =
   if Declare.exists_name id then
@@ -526,7 +529,7 @@ let mona_pure_add libref_list =
 let beta_app sigma f arg =
   EConstr.of_constr (Reduction.beta_app (EConstr.to_constr sigma f) (EConstr.to_constr sigma arg))
 
-let mona_bind2_internal sigma name m1 m2 =
+let mona_bind2_internal env sigma name m1 m2 =
   let (purelevel1, rawty1, term1) = m1 in
   let (purelevel2, rawty2, term2) = m2 in
   let rawty = econstr_prod_appvect sigma (mkProd (name, rawty1, rawty2)) [| term1 |] in
@@ -535,33 +538,33 @@ let mona_bind2_internal sigma name m1 m2 =
   else if 0 < purelevel1 then
     (purelevel2, rawty,
       if isRel sigma term1 || Termops.count_occurrences sigma (mkRel 1) term2 <= 1 then
-        beta_app sigma (mkLambda (name, (monadify_type sigma 1 rawty1), term2)) (puredown sigma 1 m1)
+        beta_app sigma (mkLambda (name, (monadify_type env sigma 1 rawty1), term2)) (puredown env sigma 1 m1)
       else
-        mkLetIn (name, (puredown sigma 1 m1), (monadify_type sigma 1 rawty1), term2))
+        mkLetIn (name, (puredown env sigma 1 m1), (monadify_type env sigma 1 rawty1), term2))
   else
     (0, rawty,
-      mona_bind0 (monadify_type sigma 1 rawty1) (monadify_type sigma 1 (Vars.lift (-1) rawty2))
+      mona_bind0 (monadify_type env sigma 1 rawty1) (monadify_type env sigma 1 (Vars.lift (-1) rawty2))
         term1
-        (Reductionops.shrink_eta (mkLambda (name, (monadify_type sigma 1 rawty1),
-          (puredown sigma 0 m2)))))
+        (Reductionops.shrink_eta (mkLambda (name, (monadify_type env sigma 1 rawty1),
+          (puredown env sigma 0 m2)))))
 
-let mona_bind2 sigma name m1 m2 =
-  let result = mona_bind2_internal sigma name m1 m2 in
+let mona_bind2 env sigma name m1 m2 =
+  let result = mona_bind2_internal env sigma name m1 m2 in
   (*Feedback.msg_debug (str "mona_bind2_report0:" ++ spc () ++
-    pr_monadic m1 ++ spc () ++ str ">>=" ++ spc () ++
-    pr_monadic m2 ++ spc () ++ str "=" ++ spc () ++
-    pr_monadic result);*)
+    pr_monadic env sigma m1 ++ spc () ++ str ">>=" ++ spc () ++
+    pr_monadic env sigma m2 ++ spc () ++ str "=" ++ spc () ++
+    pr_monadic env sigma result);*)
   result
 
-let bind_mctx sigma mctx mterm =
-  List.fold_left (fun mterm (name, marg) -> mona_bind2 sigma name marg mterm) mterm mctx
+let bind_mctx env sigma mctx mterm =
+  List.fold_left (fun mterm (name, marg) -> mona_bind2 env sigma name marg mterm) mterm mctx
 
 let mona_construct_ref env evdref (cstr, u) =
   (*Feedback.msg_debug (str "mona_construct_ref:1:" ++ Printer.pr_constructor env cstr);*)
   let key = ConstructRef cstr in
   if List.mem_assoc key !mona_record_ref then
     (let (converted, m) = List.assoc key !mona_record_ref in
-    Feedback.msg_info (hv 0 (str "constructor found:" ++ spc () ++ Printer.pr_constructor env cstr ++ spc () ++ pr_explain_monadic !evdref m));
+    Feedback.msg_info (hv 0 (str "constructor found:" ++ spc () ++ Printer.pr_constructor env cstr ++ spc () ++ pr_explain_monadic env !evdref m));
     m)
   else
     ((*Feedback.msg_debug (str "mona_construct_ref:2:" ++ Printer.pr_constructor env cstr);*)
@@ -619,7 +622,7 @@ let rec mona_const_ref env evdref (cnst, u) =
   let key = ConstRef cnst in
   if List.mem_assoc key !mona_record_ref then
     (let (converted, m) = List.assoc key !mona_record_ref in
-    Feedback.msg_info (hv 0 (str "constant found:" ++ spc () ++ Printer.pr_constant env cnst ++ spc () ++ pr_explain_monadic !evdref m));
+    Feedback.msg_info (hv 0 (str "constant found:" ++ spc () ++ Printer.pr_constant env cnst ++ spc () ++ pr_explain_monadic env !evdref m));
     m)
   else
     (let id = monadic_constant_id cnst in
@@ -716,7 +719,7 @@ and mona_head_internal env evdref rel_purelevels term =
   let termty = type_of env evdref term in
   (*Feedback.msg_debug (str "mona_head:2:" ++ Printer.pr_econstr_env env !evdref termty);*)
   if isSort !evdref termty then
-    ([], (1, termty, monadify_type !evdref 1 term))
+    ([], (1, termty, monadify_type env !evdref 1 term))
   else
     match EConstr.kind !evdref term with
     | Term.Rel i ->
@@ -785,7 +788,7 @@ and mona_head_internal env evdref rel_purelevels term =
           else
             (Array.sub margs 0 mf2_purelevel, Array.sub margs mf2_purelevel (Array.length margs - mf2_purelevel))
         in
-        let args1 = Array.map (puredown !evdref 1) margs1 in
+        let args1 = Array.map (puredown env !evdref 1) margs1 in
         let rawty1 = prod_appvect !evdref mf2_rawty rawargs1 in
         let mterm1 = (mf2_purelevel - Array.length margs1, rawty1, mkApp (mf2_term, args1)) in
         let (mctx, mterm, rawty) =
@@ -796,7 +799,7 @@ and mona_head_internal env evdref rel_purelevels term =
               let marg = margs2.(i) in
               let mctx2 = (Name.Anonymous, mterm) :: mctx in
               let lifted_marg = lift_mterm (i+1) marg in
-              let args2 = [| puredown !evdref 1 lifted_marg |] in
+              let args2 = [| puredown env !evdref 1 lifted_marg |] in
               let rawty2 = Vars.lift (i+1) (econstr_prod_appvect !evdref rawty [| lifted_rawarg |]) in
               let mterm2 = (0, rawty2, mkApp (mkRel 1, args2)) in
               (mctx2, mterm2, rawty2))
@@ -828,7 +831,7 @@ and mona_head_internal env evdref rel_purelevels term =
         let translated_brs = Array.map
           (fun br ->
             let (br_mctx, br_mterm) = mona_head env evdref rel_purelevels br in
-            bind_mctx !evdref br_mctx br_mterm)
+            bind_mctx env !evdref br_mctx br_mterm)
           brs
         in
 
@@ -848,11 +851,11 @@ and mona_head_internal env evdref rel_purelevels term =
           br_purelevels.(0)
           br_purelevels
         in
-        let mtyf = mkLambda (name, exprty, monadify_type !evdref purelevel bodyty) in
+        let mtyf = mkLambda (name, exprty, monadify_type env !evdref purelevel bodyty) in
         let brs' =
           array_map2
             (fun numargs br_mterm ->
-              puredown !evdref (numargs + purelevel) br_mterm)
+              puredown env !evdref (numargs + purelevel) br_mterm)
             cstr_numargs
             translated_brs
         in
@@ -870,7 +873,7 @@ and mona_head_internal env evdref rel_purelevels term =
         ([],
          (body_purelevel + 1,
           termty,
-          mkLambda (name, monadify_type !evdref 1 namety, body')))
+          mkLambda (name, monadify_type env !evdref 1 namety, body')))
 
     | Term.Fix ((ia, i), (nameary, tyary, funary)) ->
         let env2 = push_rec_types (nameary, tyary, funary) env !evdref in
@@ -878,11 +881,11 @@ and mona_head_internal env evdref rel_purelevels term =
         let rel_purelevels2 = List.rev_append (Array.to_list approx_purelevels) rel_purelevels in
         let mfunary = Array.map (mona_tail env2 evdref rel_purelevels2) funary in
         let tyary2 = array_map2
-          (fun f_purelevel ty -> monadify_type !evdref f_purelevel ty)
+          (fun f_purelevel ty -> monadify_type env !evdref f_purelevel ty)
           approx_purelevels
           tyary
         in
-        let funary2 = Array.map2 (fun mfun i -> puredown !evdref i mfun) mfunary approx_purelevels in
+        let funary2 = Array.map2 (fun mfun i -> puredown env !evdref i mfun) mfunary approx_purelevels in
         ([],
          (approx_purelevels.(i),
           termty,
@@ -897,7 +900,7 @@ and mona_tail env evdref rel_purelevels term =
   result
 and mona_tail_internal env evdref rel_purelevels term =
   let mctx, mterm = mona_head env evdref rel_purelevels term in
-  bind_mctx !evdref mctx mterm
+  bind_mctx env !evdref mctx mterm
 
 let monadification_single libref =
   let gref = Smartlocate.global_with_alias libref in
