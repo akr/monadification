@@ -282,8 +282,7 @@ let mona_return_ref = Summary.ref mona_return_notset ~name:"MonadificationReturn
 let mona_return_set constr =
   let env = Global.env () in
   let evdref = ref (Evd.from_env env) in
-  let (term : Term.constr), _ = Constrintern.interp_constr env !evdref constr in
-  let (term : EConstr.constr) = EConstr.of_constr term in
+  let (term : EConstr.constr), _ = Constrintern.interp_constr env !evdref constr in
   mona_return_ref := Some term;
   Feedback.msg_info (str "monad return operation registered")
 
@@ -292,8 +291,7 @@ let mona_bind_ref = Summary.ref mona_bind_notset ~name:"MonadificationBind"
 let mona_bind_set constr =
   let env = Global.env () in
   let evdref = ref (Evd.from_env env) in
-  let (term : Term.constr), _ = Constrintern.interp_constr env !evdref constr in
-  let (term : EConstr.constr) = EConstr.of_constr term in
+  let (term : EConstr.constr), _ = Constrintern.interp_constr env !evdref constr in
   mona_bind_ref := Some term;
   Feedback.msg_info (str "monad bind operation registered")
 
@@ -305,8 +303,7 @@ let mona_action_add libref constr =
   let gref = Smartlocate.global_with_alias libref in
   let env = Global.env () in
   let evdref = ref (Evd.from_env env) in
-  let (term : Term.constr), _ = Constrintern.interp_constr env !evdref constr in
-  let (term : EConstr.constr) = EConstr.of_constr term in
+  let (term : EConstr.constr), _ = Constrintern.interp_constr env !evdref constr in
   let pureterm =
     match gref with
     | ConstRef cnst -> mkConst cnst
@@ -324,8 +321,7 @@ let mona_type_ref = Summary.ref mona_type_notset ~name:"MonadificationType"
 let mona_type_set constr =
   let env = Global.env () in
   let evdref = ref (Evd.from_env env) in
-  let (term : Term.constr), _ = Constrintern.interp_constr env !evdref constr in
-  let (term : EConstr.constr) = EConstr.of_constr term in
+  let (term : EConstr.constr), _ = Constrintern.interp_constr env !evdref constr in
   mona_type_ref := Some term;
   Feedback.msg_info (str "monad type registered")
 
@@ -430,7 +426,9 @@ let define_constant id term =
   (*Feedback.msg_debug (str "define_constant:1:" ++ Id.print id);*)
   let term = delete_univ env evdref term in
   (*Feedback.msg_debug (str "define_constant:2:" ++ Id.print id);*)
-  Declare.declare_definition id (EConstr.to_constr !evdref term, Evd.universe_context_set !evdref)
+  Declare.declare_definition id
+    (EConstr.to_constr !evdref term,
+     Monomorphic_const_entry (Evd.universe_context_set !evdref))
 
 let rec find_unused_name id =
   if Declare.exists_name id then
@@ -626,9 +624,9 @@ let rec mona_const_ref env evdref (cnst, u) =
   else
     (let id = monadic_constant_id cnst in
     (*Feedback.msg_debug (str "mona_const_ref:2:" ++ Id.print id);*)
-    let (term0, uconstraints) =
-      match Environ.constant_opt_value env (cnst, u) with
-      | Some term_uc -> term_uc
+    let term0 =
+      match Environ.constant_opt_value_in env (cnst, u) with
+      | Some term-> term
       | None -> user_err ~hdr:"mona_const_ref"
           (hv 0 (str "failed to obtain constant value:" ++ spc () ++ Printer.pr_constant env cnst))
     in
