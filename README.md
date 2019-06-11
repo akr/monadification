@@ -11,8 +11,8 @@ https://github.com/akr/monadification
 
 ## Requiements
 
-- Coq 8.8 (Coq 8.7 doesn't work)
-- OCaml 4.06
+- Coq 8.9 (Coq 8.8 doesn't work)
+- OCaml 4.07
 
 ## How to build and install
 
