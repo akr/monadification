@@ -12,7 +12,6 @@ sample/mona.v
 sample/nth.v
 sample/numcons_coq.v
 sample/numcons_ssr.v
-sample/numcons_ssr.v
 sample/test_monad.v
 sample/test_seq.v
 sample/listutils.v
