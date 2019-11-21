@@ -574,7 +574,7 @@ let mona_bind2 (env : Environ.env) (sigma : Evd.evar_map) (name : Name.t Context
 let bind_mctx (env : Environ.env) (sigma : Evd.evar_map) (mctx : (Name.t Context.binder_annot * monadic) list) (mterm : monadic) : monadic =
   List.fold_left (fun mterm (name, marg) -> mona_bind2 env sigma name marg mterm) mterm mctx
 
-let mona_construct_ref (env : Environ.env) (evdref : Evd.evar_map ref) ((cstr, u) : Names.constructor * 'a) =
+let mona_construct_ref (env : Environ.env) (evdref : Evd.evar_map ref) ((cstr, u) : Names.constructor * EInstance.t) =
   (*Feedback.msg_debug (str "mona_construct_ref:1:" ++ Printer.pr_constructor env cstr);*)
   let key = ConstructRef cstr in
   if List.mem_assoc key !mona_record_ref then
@@ -927,7 +927,7 @@ let monadification_single (libref : Libnames.qualid) : unit =
       let _ = mona_const_ref env evdref (Univ.in_punivs cnst) in
       ()
   | ConstructRef cstr ->
-      let _ = mona_construct_ref env evdref (Univ.in_punivs cstr) in
+      let _ = mona_construct_ref env evdref (cstr, EInstance.empty) in
       ()
   | _ -> user_err (Pp.str "not constant or constructor")
 
