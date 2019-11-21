@@ -1,4 +1,6 @@
 Makefile.coq
+Makefile.coq.conf
+src/g_monadification.ml
 *.bak
 *.swp
 *.a

@@ -146,6 +146,7 @@ let deanonymize_term (env : Environ.env) (evdref : Evd.evar_map ref) (term : ECo
   let rec r env term =
     match EConstr.kind !evdref term with
     | Constr.Rel i -> term
+    | Constr.Int n -> term
     | Constr.Var name -> term
     | Constr.Meta i -> term
     | Constr.Evar (ekey, termary) -> mkEvar (ekey, (Array.map (r env) termary))
@@ -162,7 +163,7 @@ let deanonymize_term (env : Environ.env) (evdref : Evd.evar_map ref) (term : ECo
     | Constr.LetIn (name, expr, ty, body) ->
         let decl = Context.Rel.Declaration.LocalDef (name, expr, ty) in
         let env2 = EConstr.push_rel decl env in
-        mkLetIn (Namegen.named_hd env !evdref ty name, r env expr, r env ty, r env2 body)
+        mkLetIn (Context.map_annot (Namegen.named_hd env !evdref ty) name, r env expr, r env ty, r env2 body)
     | Constr.App (f, argsary) -> mkApp (r env f, Array.map (r env) argsary)
     | Constr.Const (cnst, u) -> term
     | Constr.Ind (ind, u) -> term
@@ -170,11 +171,11 @@ let deanonymize_term (env : Environ.env) (evdref : Evd.evar_map ref) (term : ECo
     | Constr.Case (ci, tyf, expr, brs) -> mkCase (ci, r env tyf, r env expr, Array.map (r env) brs)
     | Constr.Fix ((ia, i), (nameary, tyary, funary)) ->
         let env2 = push_rec_types (nameary, tyary, funary) env !evdref in
-        let nameary2 = array_map2 (Namegen.named_hd env !evdref) tyary nameary in
+        let nameary2 = array_map2 (fun ty name -> Context.map_annot (Namegen.named_hd env !evdref ty) name) tyary nameary in
         mkFix ((ia, i), (nameary2, Array.map (r env) tyary, Array.map (r env2) funary))
     | Constr.CoFix (i, (nameary, tyary, funary)) ->
         let env2 = push_rec_types (nameary, tyary, funary) env !evdref in
-        let nameary2 = array_map2 (Namegen.named_hd env !evdref) tyary nameary in
+        let nameary2 = array_map2 (fun ty name -> Context.map_annot (Namegen.named_hd env !evdref ty) name) tyary nameary in
         mkCoFix (i, (nameary2, Array.map (r env) tyary, Array.map (r env2) funary))
     | Constr.Proj (proj, expr) ->
         mkProj (proj, r env expr)
@@ -184,12 +185,17 @@ let deanonymize_term (env : Environ.env) (evdref : Evd.evar_map ref) (term : ECo
 let whd_all (env : Environ.env) (sigma : Evd.evar_map) (term : EConstr.t) : EConstr.t =
   EConstr.of_constr (Reduction.whd_all env (EConstr.to_constr sigma term))
 
+let e_type_of env evdref term =
+  let (sigma2, ty) = Typing.type_of env !evdref term in
+  evdref := sigma2;
+  ty
+
 let term_explicit_prod (env : Environ.env) (evdref : Evd.evar_map ref) (term : EConstr.t) : EConstr.t =
   let rec r env term =
     if isProd !evdref term then
       r2 env term
     else
-      let termty = Typing.e_type_of env evdref term in
+      let termty = e_type_of env evdref term in
       if isSort !evdref termty then
         let term' = whd_all env !evdref term in
         if isProd !evdref term' then
@@ -201,6 +207,7 @@ let term_explicit_prod (env : Environ.env) (evdref : Evd.evar_map ref) (term : E
   and r2 env term =
     match EConstr.kind !evdref term with
     | Constr.Rel i -> term
+    | Constr.Int n -> term
     | Constr.Var name -> term
     | Constr.Meta i -> term
     | Constr.Evar (ekey, termary) -> mkEvar (ekey, (Array.map (r env) termary))
@@ -235,20 +242,26 @@ let term_explicit_prod (env : Environ.env) (evdref : Evd.evar_map ref) (term : E
   r env term
 
 let type_of (env : Environ.env) (evdref : Evd.evar_map ref) (term : EConstr.t) : EConstr.types =
-  let ty = Typing.e_type_of env evdref term in
+  let ty = e_type_of env evdref term in
   term_explicit_prod env evdref ty
+
+let e_new_Type evdref =
+  let (sigma2, term) = Evarutil.new_Type !evdref in
+  evdref := sigma2;
+  term
 
 let delete_univ (env : Environ.env) (evdref : Evd.evar_map ref) (term : EConstr.t) : EConstr.t =
   let rec recfun term =
     match EConstr.kind !evdref term with
     | Constr.Rel i -> mkRel i
+    | Constr.Int n -> mkInt n
     | Constr.Var name -> mkVar name
     | Constr.Meta i -> mkMeta i
     | Constr.Evar (ekey, termary) -> mkEvar (ekey, (Array.map recfun termary))
     | Constr.Sort s ->
         (match ESorts.kind !evdref s with
-        | Sorts.Prop _ -> term
-        | Sorts.Type _ -> Evarutil.e_new_Type evdref)
+        | Sorts.Prop | Sorts.SProp | Sorts.Set -> term
+        | Sorts.Type _ -> e_new_Type evdref)
     | Constr.Cast (expr, kind, ty) -> mkCast (recfun expr, kind, recfun ty)
     | Constr.Prod (name, ty, body) -> mkProd (name, recfun ty, recfun body)
     | Constr.Lambda (name, ty, body) -> mkLambda (name, recfun ty, recfun body)
@@ -268,7 +281,7 @@ let delete_univ (env : Environ.env) (evdref : Evd.evar_map ref) (term : EConstr.
   (*Feedback.msg_debug (str "delete_univ:1:" ++ Printer.pr_econstr_env env !evdref term);*)
   let newterm = recfun term in
   (*Feedback.msg_debug (str "delete_univ:2:" ++ Printer.pr_econstr_env env !evdref newterm);*)
-  let _ = Typing.e_type_of env evdref newterm in
+  let _ = e_type_of env evdref newterm in
   (*Feedback.msg_debug (str "delete_univ:3:" ++ Printer.pr_econstr_env env !evdref newterm);*)
   newterm
 
@@ -297,7 +310,7 @@ let mona_bind_set (constr : Constrexpr.constr_expr) : unit =
   Feedback.msg_info (str "monad bind operation registered")
 
 (* (orignale_name, (converted_flag, mterm)) *)
-let mona_record_empty : (global_reference * (bool * monadic)) list = []
+let mona_record_empty : (GlobRef.t * (bool * monadic)) list = []
 let mona_record_ref = Summary.ref mona_record_empty ~name:"MonadificationRecord"
 
 let mona_action_add (libref : Libnames.qualid) (constr : Constrexpr.constr_expr) : unit =
@@ -407,7 +420,7 @@ let rec puredown (env : Environ.env) (sigma : Evd.evar_map) (j : int) (m : monad
             (* This eta-expansion should not delay side effect
                because 0 < i which means that e has no immediate side effect. *)
             let body' = mkApp (Vars.lift 1 term, [| mkRel 1 |]) in
-            puredown env sigma j (i, rawtermty, mkLambda (Name.Anonymous, argty', body')))
+            puredown env sigma j (i, rawtermty, mkLambda (Context.anonR, argty', body')))
     | _ ->
         mona_return0 (monadify_type env sigma 1 rawtermty) term
 
@@ -429,9 +442,11 @@ let define_constant (id : Id.t) (term : EConstr.t) : Constant.t =
   (*Feedback.msg_debug (str "define_constant:1:" ++ Id.print id);*)
   let term = delete_univ env evdref term in
   (*Feedback.msg_debug (str "define_constant:2:" ++ Id.print id);*)
-  Declare.declare_definition id
-    (EConstr.to_constr !evdref term,
-     Entries.Monomorphic_const_entry (Evd.universe_context_set !evdref))
+  let univs = Evd.univ_entry ~poly:false !evdref in
+  let defent = Entries.DefinitionEntry (Declare.definition_entry ~univs:univs (EConstr.to_constr !evdref term)) in
+  let kind = Decl_kinds.IsDefinition Decl_kinds.Definition in
+  let declared_ctnt = Declare.declare_constant id (defent, kind) in
+  declared_ctnt
 
 let rec find_unused_name (id : Id.t) : Id.t =
   if Declare.exists_name id then
@@ -529,7 +544,7 @@ let mona_pure_add (libref_list : Libnames.qualid list) : unit =
 let beta_app (sigma : Evd.evar_map) (f : EConstr.t) (arg : EConstr.t) : EConstr.t =
   EConstr.of_constr (Reduction.beta_app (EConstr.to_constr sigma f) (EConstr.to_constr sigma arg))
 
-let mona_bind2_internal (env : Environ.env) (sigma : Evd.evar_map) (name : Name.t) (m1 : monadic) (m2 : monadic) : monadic =
+let mona_bind2_internal (env : Environ.env) (sigma : Evd.evar_map) (name : Name.t Context.binder_annot) (m1 : monadic) (m2 : monadic) : monadic =
   let (purelevel1, rawty1, term1) = m1 in
   let (purelevel2, rawty2, term2) = m2 in
   let rawty = econstr_prod_appvect sigma (mkProd (name, rawty1, rawty2)) [| term1 |] in
@@ -548,7 +563,7 @@ let mona_bind2_internal (env : Environ.env) (sigma : Evd.evar_map) (name : Name.
         (Reductionops.shrink_eta (mkLambda (name, (monadify_type env sigma 1 rawty1),
           (puredown env sigma 0 m2)))))
 
-let mona_bind2 (env : Environ.env) (sigma : Evd.evar_map) (name : Name.t) (m1 : monadic) (m2 : monadic) : monadic =
+let mona_bind2 (env : Environ.env) (sigma : Evd.evar_map) (name : Name.t Context.binder_annot) (m1 : monadic) (m2 : monadic) : monadic =
   let result = mona_bind2_internal env sigma name m1 m2 in
   (*Feedback.msg_debug (str "mona_bind2_report0:" ++ spc () ++
     pr_monadic env sigma m1 ++ spc () ++ str ">>=" ++ spc () ++
@@ -556,7 +571,7 @@ let mona_bind2 (env : Environ.env) (sigma : Evd.evar_map) (name : Name.t) (m1 : 
     pr_monadic env sigma result);*)
   result
 
-let bind_mctx (env : Environ.env) (sigma : Evd.evar_map) (mctx : (Name.t * monadic) list) (mterm : monadic) : monadic =
+let bind_mctx (env : Environ.env) (sigma : Evd.evar_map) (mctx : (Name.t Context.binder_annot * monadic) list) (mterm : monadic) : monadic =
   List.fold_left (fun mterm (name, marg) -> mona_bind2 env sigma name marg mterm) mterm mctx
 
 let mona_construct_ref (env : Environ.env) (evdref : Evd.evar_map ref) ((cstr, u) : Names.constructor * 'a) =
@@ -577,12 +592,12 @@ let mona_construct_ref_known ((cstr, u) : Names.constructor EConstr.puniverses) 
   let key = ConstructRef cstr in
   List.assoc key !mona_record_ref
 
-let pr_head (env : Environ.env) (evdref : Evd.evar_map ref) (mctx : (Name.t * monadic) list) (mterm : monadic) : Pp.t list * Pp.t =
+let pr_head (env : Environ.env) (evdref : Evd.evar_map ref) (mctx : (Name.t Context.binder_annot * monadic) list) (mterm : monadic) : Pp.t list * Pp.t =
   let n = List.length mctx in
   let ppcmds_mctx, env2, _ = List.fold_right
     (fun (name, mctx_elt) (prs, e, i) ->
       (*let name = Namegen.named_hd env (rawtype_of_monadic mctx_elt) Name.Anonymous in*)
-      let name = if Name.is_anonymous name then Name.Name (Id.of_string ("mctx" ^ string_of_int i)) else name in
+      let name = Context.map_annot (fun name -> if Name.is_anonymous name then Name.Name (Id.of_string ("mctx" ^ string_of_int i)) else name) name in
       let pr = pr_monadic_env e !evdref mctx_elt in
       let decl = Context.Rel.Declaration.LocalAssum (name, convert_type !evdref 1 (rawtype_of_monadic mctx_elt)) in
       let e2 = push_rel decl e in
@@ -601,7 +616,7 @@ let feedback_env (prefix : string) (env : Environ.env) : unit =
       Feedback.msg_debug (hv 0 (str prefix ++ str ":rel" ++ int (num_ctx - i) ++ str ":" ++ str (string_of_name (Context.Rel.Declaration.get_name rel)))))
     (List.rev ctx)
 
-let feedback_head (prefix : string) (env : Environ.env) (evdref : Evd.evar_map ref) (mctx : (Name.t * monadic) list) (mterm : monadic) : unit =
+let feedback_head (prefix : string) (env : Environ.env) (evdref : Evd.evar_map ref) (mctx : (Name.t Context.binder_annot * monadic) list) (mterm : monadic) : unit =
   (*feedback_env prefix env;*)
   let ppcmds_mctx, ppcmds_mterm = pr_head env evdref mctx mterm in
   let n = List.length mctx in
@@ -610,14 +625,14 @@ let feedback_head (prefix : string) (env : Environ.env) (evdref : Evd.evar_map r
     (List.rev ppcmds_mctx);
   Feedback.msg_debug (hv 0 (str prefix ++ str ":mterm:" ++ ppcmds_mterm))
 
-let make_purelevel_positive ((mctx, mterm) : (Name.t * monadic) list * monadic) : (Name.t * monadic) list * monadic  =
+let make_purelevel_positive ((mctx, mterm) : (Name.t Context.binder_annot * monadic) list * monadic) : (Name.t Context.binder_annot * monadic) list * monadic  =
   let (purelevel, rawty, term) = mterm in
   if purelevel = 0 then
-    ((Name.Anonymous, mterm) :: mctx, (1, Vars.lift 1 rawty, mkRel 1))
+    ((Context.anonR, mterm) :: mctx, (1, Vars.lift 1 rawty, mkRel 1))
   else
     (mctx, mterm)
 
-let rec mona_const_ref (env : Environ.env) (evdref : Evd.evar_map ref) ((cnst, u) : Names.Constant.t Constr.puniverses) : monadic =
+let rec mona_const_ref (env : Environ.env) (evdref : Evd.evar_map ref) ((cnst, u) : Names.Constant.t Univ.puniverses) : monadic =
   (*Feedback.msg_debug (str "mona_const_ref:1:" ++ Printer.pr_constant env cnst);*)
   let key = ConstRef cnst in
   if List.mem_assoc key !mona_record_ref then
@@ -671,6 +686,7 @@ and mona_pure_dependencies_p (env : Environ.env) (evdref : Evd.evar_map ref) (te
   let rec recfun env term =
     match EConstr.kind !evdref term with
     | Constr.Rel i -> ()
+    | Constr.Int n -> ()
     | Constr.Var name -> ()
     | Constr.Meta i -> ()
     | Constr.Evar (ekey, termary) -> ()
@@ -709,12 +725,12 @@ and mona_pure_dependencies_p (env : Environ.env) (evdref : Evd.evar_map ref) (te
   (recfun env term;
   List.for_all (monadic_is_pure !evdref) !translated)
 
-and mona_head (env : Environ.env) (evdref : Evd.evar_map ref) (rel_purelevels : int list) (term : EConstr.t) : (Name.t * monadic) list * monadic =
+and mona_head (env : Environ.env) (evdref : Evd.evar_map ref) (rel_purelevels : int list) (term : EConstr.t) : (Name.t Context.binder_annot * monadic) list * monadic =
   (* Feedback.msg_debug (hv 0 (str "mona_head:start:" ++ Printer.pr_econstr_env env !evdref term)); *)
   let mctx, mterm = mona_head_internal env evdref rel_purelevels term in
   (* feedback_head "mona_head:result" env evdref mctx mterm; *)
   (mctx, mterm)
-and mona_head_internal (env : Environ.env) (evdref : Evd.evar_map ref) (rel_purelevels : int list) (term : EConstr.t) : (Name.t * monadic) list * monadic =
+and mona_head_internal (env : Environ.env) (evdref : Evd.evar_map ref) (rel_purelevels : int list) (term : EConstr.t) : (Name.t Context.binder_annot * monadic) list * monadic =
   (*Feedback.msg_debug (str "mona_head:1:" ++ Printer.pr_econstr_env env !evdref term);*)
   let termty = type_of env evdref term in
   (*Feedback.msg_debug (str "mona_head:2:" ++ Printer.pr_econstr_env env !evdref termty);*)
@@ -738,7 +754,7 @@ and mona_head_internal (env : Environ.env) (evdref : Evd.evar_map ref) (rel_pure
     | Constr.Cast (expr, kind, castty) ->
         let mctx, m = mona_head env evdref rel_purelevels expr in
         let nb = List.length mctx in
-        ((Name.Anonymous, m) :: mctx,
+        ((Context.anonR, m) :: mctx,
          (1, Vars.lift (nb+1) termty,
            mkCast (mkRel 1, kind, Vars.lift (nb+1) castty)))
 
@@ -797,7 +813,7 @@ and mona_head_internal (env : Environ.env) (evdref : Evd.evar_map ref) (rel_pure
               let rawarg = rawargs2.(i) in
               let lifted_rawarg = Vars.lift (i+1) rawarg in
               let marg = margs2.(i) in
-              let mctx2 = (Name.Anonymous, mterm) :: mctx in
+              let mctx2 = (Context.anonR, mterm) :: mctx in
               let lifted_marg = lift_mterm (i+1) marg in
               let args2 = [| puredown env !evdref 1 lifted_marg |] in
               let rawty2 = Vars.lift (i+1) (econstr_prod_appvect !evdref rawty [| lifted_rawarg |]) in
@@ -860,7 +876,7 @@ and mona_head_internal (env : Environ.env) (evdref : Evd.evar_map ref) (rel_pure
             translated_brs
         in
         make_purelevel_positive
-          ((Name.Anonymous, mexpr) :: mctx_expr,
+          ((Context.anonR, mexpr) :: mctx_expr,
            (purelevel,
             Vars.lift (n+1) termty,
             mkCase (ci, Vars.lift (n+1) mtyf, mkRel 1, (Array.map (Vars.lift (n+1)) brs'))))
