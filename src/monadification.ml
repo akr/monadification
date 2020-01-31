@@ -360,7 +360,7 @@ let rec convert_type (sigma : Evd.evar_map) (pure_level : int) (ty : EConstr.t) 
     | _ -> ty
 
 let rec monadify_type (env : Environ.env) (sigma : Evd.evar_map) (purelevel : int) (ty : EConstr.t) : EConstr.t =
-  Feedback.msg_debug (str "monadify_type:" ++ Printer.pr_econstr_env env sigma ty);
+  (*Feedback.msg_debug (str "monadify_type:" ++ Printer.pr_econstr_env env sigma ty);*)
   let wrap_type ty0 =
     if purelevel = 0 then
       mona_type0 ty0
@@ -458,14 +458,14 @@ let exists_name id =
   with Declare.AlreadyDeclared _ -> true
 
 let rec find_unused_name (id : Id.t) : Id.t =
-  Feedback.msg_debug (Pp.str "find_unused_name: " ++ Id.print id);
+  (*Feedback.msg_debug (Pp.str "find_unused_name: " ++ Id.print id);*)
   if exists_name id then
     find_unused_name (Id.of_string (Id.to_string id ^ "'"))
   else
     id
 
 let rec type_has_function_argument (env : Environ.env) (evdref : Evd.evar_map ref) (ty : EConstr.t) : bool =
-  Feedback.msg_debug (Pp.str "type_has_function_argument");
+  (*Feedback.msg_debug (Pp.str "type_has_function_argument");*)
   match EConstr.kind !evdref ty with
   | Constr.Prod (name, namety, body) ->
       let decl = Context.Rel.Declaration.LocalAssum (name, namety) in
@@ -644,7 +644,7 @@ let make_purelevel_positive ((mctx, mterm) : (Name.t Context.binder_annot * mona
     (mctx, mterm)
 
 let rec mona_const_ref (env : Environ.env) (evdref : Evd.evar_map ref) ((cnst, u) : Names.Constant.t Univ.puniverses) : monadic =
-  Feedback.msg_debug (str "mona_const_ref:1:" ++ Printer.pr_constant env cnst);
+  (*Feedback.msg_debug (str "mona_const_ref:1:" ++ Printer.pr_constant env cnst);*)
   let key = ConstRef cnst in
   if List.mem_assoc key !mona_record_ref then
     (let (converted, m) = List.assoc key !mona_record_ref in
