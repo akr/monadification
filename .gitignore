@@ -13,6 +13,8 @@ src/g_monadification.ml
 *.cmi
 *.cmo
 *.vo
+*.vos
+*.vok
 *.glob
 *.d
 *.aux
