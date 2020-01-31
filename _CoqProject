@@ -5,7 +5,7 @@
 
 src/g_monadification.mlg
 src/monadification.ml
-src/monadification_plugin.mllib
+src/monadification_plugin.mlpack
 theories/monadification.v
 
 sample/mona.v
