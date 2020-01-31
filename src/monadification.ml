@@ -17,7 +17,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 *)
 
 open Names
-open Globnames
+open GlobRef
 open Pp
 open CErrors
 open Goptions
@@ -147,6 +147,7 @@ let deanonymize_term (env : Environ.env) (evdref : Evd.evar_map ref) (term : ECo
     match EConstr.kind !evdref term with
     | Constr.Rel i -> term
     | Constr.Int n -> term
+    | Constr.Float n -> term
     | Constr.Var name -> term
     | Constr.Meta i -> term
     | Constr.Evar (ekey, termary) -> mkEvar (ekey, (Array.map (r env) termary))
@@ -208,6 +209,7 @@ let term_explicit_prod (env : Environ.env) (evdref : Evd.evar_map ref) (term : E
     match EConstr.kind !evdref term with
     | Constr.Rel i -> term
     | Constr.Int n -> term
+    | Constr.Float n -> term
     | Constr.Var name -> term
     | Constr.Meta i -> term
     | Constr.Evar (ekey, termary) -> mkEvar (ekey, (Array.map (r env) termary))
@@ -255,6 +257,7 @@ let delete_univ (env : Environ.env) (evdref : Evd.evar_map ref) (term : EConstr.
     match EConstr.kind !evdref term with
     | Constr.Rel i -> mkRel i
     | Constr.Int n -> mkInt n
+    | Constr.Float n -> mkFloat n
     | Constr.Var name -> mkVar name
     | Constr.Meta i -> mkMeta i
     | Constr.Evar (ekey, termary) -> mkEvar (ekey, (Array.map recfun termary))
@@ -357,7 +360,7 @@ let rec convert_type (sigma : Evd.evar_map) (pure_level : int) (ty : EConstr.t) 
     | _ -> ty
 
 let rec monadify_type (env : Environ.env) (sigma : Evd.evar_map) (purelevel : int) (ty : EConstr.t) : EConstr.t =
-  (*Feedback.msg_debug (str "monadify_type:" ++ Printer.pr_econstr ty);*)
+  Feedback.msg_debug (str "monadify_type:" ++ Printer.pr_econstr_env env sigma ty);
   let wrap_type ty0 =
     if purelevel = 0 then
       mona_type0 ty0
@@ -443,18 +446,26 @@ let define_constant (id : Id.t) (term : EConstr.t) : Constant.t =
   let term = delete_univ env evdref term in
   (*Feedback.msg_debug (str "define_constant:2:" ++ Id.print id);*)
   let univs = Evd.univ_entry ~poly:false !evdref in
-  let defent = Entries.DefinitionEntry (Declare.definition_entry ~univs:univs (EConstr.to_constr !evdref term)) in
-  let kind = Decl_kinds.IsDefinition Decl_kinds.Definition in
-  let declared_ctnt = Declare.declare_constant id (defent, kind) in
+  let defent = Declare.DefinitionEntry (Declare.definition_entry ~univs:univs (EConstr.to_constr !evdref term)) in
+  let kind = Decls.IsDefinition Decls.Definition in
+  let declared_ctnt = Declare.declare_constant ~name:id ~kind:kind defent in
   declared_ctnt
 
+let exists_name id =
+  try
+    Declare.check_exists id;
+    false
+  with Declare.AlreadyDeclared _ -> true
+
 let rec find_unused_name (id : Id.t) : Id.t =
-  if Declare.exists_name id then
+  Feedback.msg_debug (Pp.str "find_unused_name: " ++ Id.print id);
+  if exists_name id then
     find_unused_name (Id.of_string (Id.to_string id ^ "'"))
   else
     id
 
 let rec type_has_function_argument (env : Environ.env) (evdref : Evd.evar_map ref) (ty : EConstr.t) : bool =
+  Feedback.msg_debug (Pp.str "type_has_function_argument");
   match EConstr.kind !evdref ty with
   | Constr.Prod (name, namety, body) ->
       let decl = Context.Rel.Declaration.LocalAssum (name, namety) in
@@ -633,7 +644,7 @@ let make_purelevel_positive ((mctx, mterm) : (Name.t Context.binder_annot * mona
     (mctx, mterm)
 
 let rec mona_const_ref (env : Environ.env) (evdref : Evd.evar_map ref) ((cnst, u) : Names.Constant.t Univ.puniverses) : monadic =
-  (*Feedback.msg_debug (str "mona_const_ref:1:" ++ Printer.pr_constant env cnst);*)
+  Feedback.msg_debug (str "mona_const_ref:1:" ++ Printer.pr_constant env cnst);
   let key = ConstRef cnst in
   if List.mem_assoc key !mona_record_ref then
     (let (converted, m) = List.assoc key !mona_record_ref in
@@ -687,6 +698,7 @@ and mona_pure_dependencies_p (env : Environ.env) (evdref : Evd.evar_map ref) (te
     match EConstr.kind !evdref term with
     | Constr.Rel i -> ()
     | Constr.Int n -> ()
+    | Constr.Float n -> ()
     | Constr.Var name -> ()
     | Constr.Meta i -> ()
     | Constr.Evar (ekey, termary) -> ()

@@ -10,6 +10,7 @@ Makefile.coq : _CoqProject
 clean :
 	rm -f \
 	  Makefile.coq \
+	  src/g_monadification.ml \
 	  src/*.o \ \
 	  src/*.cmi \
 	  src/*.cmo \
