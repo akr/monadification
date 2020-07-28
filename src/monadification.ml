@@ -27,7 +27,6 @@ open EConstr
 let opt_verbose = ref false
 let _ = declare_bool_option
         { optdepr  = false;
-          optname  = "Monadification Verbose";
           optkey   = ["Monadification";"Verbose"];
           optread  = (fun () -> !opt_verbose);
           optwrite = (:=) opt_verbose }
@@ -150,7 +149,7 @@ let deanonymize_term (env : Environ.env) (evdref : Evd.evar_map ref) (term : ECo
     | Constr.Float n -> term
     | Constr.Var name -> term
     | Constr.Meta i -> term
-    | Constr.Evar (ekey, termary) -> mkEvar (ekey, (Array.map (r env) termary))
+    | Constr.Evar (ekey, terms) -> mkEvar (ekey, (List.map (r env) terms))
     | Constr.Sort s -> term
     | Constr.Cast (expr, kind, ty) -> mkCast (r env expr, kind, r env ty)
     | Constr.Prod (name, ty, body) ->
@@ -212,7 +211,7 @@ let term_explicit_prod (env : Environ.env) (evdref : Evd.evar_map ref) (term : E
     | Constr.Float n -> term
     | Constr.Var name -> term
     | Constr.Meta i -> term
-    | Constr.Evar (ekey, termary) -> mkEvar (ekey, (Array.map (r env) termary))
+    | Constr.Evar (ekey, terms) -> mkEvar (ekey, (List.map (r env) terms))
     | Constr.Sort s -> term
     | Constr.Cast (expr, kind, ty) -> mkCast (r env expr, kind, r env ty)
     | Constr.Prod (name, ty, body) ->
@@ -260,7 +259,7 @@ let delete_univ (env : Environ.env) (evdref : Evd.evar_map ref) (term : EConstr.
     | Constr.Float n -> mkFloat n
     | Constr.Var name -> mkVar name
     | Constr.Meta i -> mkMeta i
-    | Constr.Evar (ekey, termary) -> mkEvar (ekey, (Array.map recfun termary))
+    | Constr.Evar (ekey, terms) -> mkEvar (ekey, (List.map recfun terms))
     | Constr.Sort s ->
         (match ESorts.kind !evdref s with
         | Sorts.Prop | Sorts.SProp | Sorts.Set -> term
@@ -571,7 +570,7 @@ let mona_bind2_internal (env : Environ.env) (sigma : Evd.evar_map) (name : Name.
     (0, rawty,
       mona_bind0 (monadify_type env sigma 1 rawty1) (monadify_type env sigma 1 (Vars.lift (-1) rawty2))
         term1
-        (Reductionops.shrink_eta (mkLambda (name, (monadify_type env sigma 1 rawty1),
+        (Reductionops.shrink_eta env (mkLambda (name, (monadify_type env sigma 1 rawty1),
           (puredown env sigma 0 m2)))))
 
 let mona_bind2 (env : Environ.env) (sigma : Evd.evar_map) (name : Name.t Context.binder_annot) (m1 : monadic) (m2 : monadic) : monadic =
