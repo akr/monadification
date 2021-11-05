@@ -3,7 +3,9 @@
 -Q src monadification
 -Q sample monadification.sample
 
+src/g_monadification.mli
 src/g_monadification.mlg
+src/monadification.mli
 src/monadification.ml
 src/monadification_plugin.mlpack
 theories/monadification.v
