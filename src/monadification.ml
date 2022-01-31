@@ -412,7 +412,7 @@ let mona_bind0 (ty1 : EConstr.t) (ty2 : EConstr.t) (term1 : EConstr.t) (term2 : 
 let rec puredown (env : Environ.env) (sigma : Evd.evar_map) (j : int) (m : monadic) : EConstr.t =
   let (i, (rawtermty : EConstr.constr), term) = m in
   if i < j then
-    user_err ~hdr:"puredown"
+    user_err
       (hv 0 (str "puredown: cannot up purelevel:" ++ spc () ++ pr_monadic env sigma m ++ spc () ++ hv 0 (str "to" ++ spc () ++ int j)))
   else if i = j then
     term
@@ -533,9 +533,9 @@ let mona_pure_def (gref : GlobRef.t) : monadic =
   let termty = type_of env evdref term in
   (if higher_order_function_type_p env evdref termty then
     match gref with
-    | ConstRef cnst -> user_err ~hdr:"mona_pure_def"
+    | ConstRef cnst -> user_err
         (hv 0 (str "higer order function can not considered as pure function:" ++ spc () ++ Printer.pr_global gref))
-    | ConstructRef cstr -> user_err ~hdr:"mona_pure_def"
+    | ConstructRef cstr -> user_err
         (hv 0 (str "constructor with higer order function is not supported:" ++ spc () ++ Printer.pr_global gref))
     | _ -> user_err (Pp.str "unexpected gref"));
 
@@ -579,7 +579,7 @@ let mona_bind2_internal (env : Environ.env) (sigma : Evd.evar_map) (name : Name.
     (0, rawty,
       mona_bind0 (monadify_type env sigma 1 rawty1) (monadify_type env sigma 1 (Vars.lift (-1) rawty2))
         term1
-        (Reductionops.shrink_eta env (mkLambda (name, (monadify_type env sigma 1 rawty1),
+        (Reductionops.shrink_eta sigma (mkLambda (name, (monadify_type env sigma 1 rawty1),
           (puredown env sigma 0 m2)))))
 
 let mona_bind2 (env : Environ.env) (sigma : Evd.evar_map) (name : Name.t Context.binder_annot) (m1 : monadic) (m2 : monadic) : monadic =
@@ -664,7 +664,7 @@ let rec mona_const_ref (env : Environ.env) (evdref : Evd.evar_map ref) ((cnst, u
     let term0 =
       match Environ.constant_opt_value_in env (cnst, u) with
       | Some term-> term
-      | None -> user_err ~hdr:"mona_const_ref"
+      | None -> user_err
           (hv 0 (str "failed to obtain constant value:" ++ spc () ++ Printer.pr_constant env cnst))
     in
     let (term0 : EConstr.constr) = EConstr.of_constr term0 in
