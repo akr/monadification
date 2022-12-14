@@ -488,7 +488,7 @@ Proof.
   rewrite -divnMA [sz2 * k]mulnC -/sz1.
   rewrite add0n.
   f_equal.
-  rewrite -[n %/ sz1 * k]addn0 iota_addl -map_comp.
+  rewrite -[n %/ sz1 * k]addn0 iotaDl -map_comp.
   apply eq_in_map => j.
   rewrite mem_iota add0n => /andP [_ Hj].
   rewrite add0n /=.

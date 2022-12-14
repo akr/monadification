@@ -1,3 +1,4 @@
+src/META.coq-monadification
 -Q theories monadification
 -I src
 -Q src monadification

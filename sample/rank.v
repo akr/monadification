@@ -125,7 +125,7 @@ Proof.
     by rewrite -addnA bcount_adjacent -mulSn.
   congr (darr _ (catrev _ _)); last first.
     by rewrite mul0n bcount_empty addn0.
-  rewrite -[1]add1n iota_addl -map_comp.
+  rewrite -[1]add1n iotaDl -map_comp.
   apply eq_map => j /=.
   by rewrite -addnA bcount_adjacent mulSn.
 Qed.
@@ -148,13 +148,13 @@ Proof.
   rewrite BuildDir2Val IH /=.
   congr (_, _); last by rewrite add0n -/sz1 -addnA bcount_adjacent.
   congr ((darr w1 (catrev _ _)), (darr w2 _)).
-      rewrite -[1]add1n iota_addl -map_comp.
+      rewrite -[1]add1n iotaDl -map_comp.
       apply eq_map => j /=.
       by rewrite add0n -/sz1 -addnA bcount_adjacent.
     by rewrite mul0n bcount_empty addn0.
   rewrite mulSn iota_add add0n map_cat catrev_catl.
   congr (catrev _ _).
-    rewrite -{6}[k]addn0 iota_addl -map_comp.
+    rewrite -{6}[k]addn0 iotaDl -map_comp.
     apply eq_map => j /=.
     rewrite divnDl; last by [].
     rewrite modnDl.
@@ -200,7 +200,7 @@ Proof.
   congr (catrev _ _).
   rewrite {2}(divn_eq n2 k) -/n1 iota_add map_cat.
   congr (_ ++ _).
-  rewrite add0n -[n1 * k]addn0 iota_addl -map_comp.
+  rewrite add0n -[n1 * k]addn0 iotaDl -map_comp.
   apply eq_in_map => j.
   rewrite mem_iota add0n => /andP [_ Hj].
   rewrite add0n /=.
