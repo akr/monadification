@@ -149,7 +149,7 @@ let deanonymize_term (env : Environ.env) (evdref : Evd.evar_map ref) (term : ECo
     | Constr.Float n -> term
     | Constr.Var name -> term
     | Constr.Meta i -> term
-    | Constr.Evar (ekey, terms) -> mkEvar (ekey, (List.map (r env) terms))
+    | Constr.Evar (ekey, terms) -> mkEvar (ekey, (SList.Skip.map (r env) terms))
     | Constr.Sort s -> term
     | Constr.Cast (expr, kind, ty) -> mkCast (r env expr, kind, r env ty)
     | Constr.Prod (name, ty, body) ->
@@ -214,7 +214,7 @@ let term_explicit_prod (env : Environ.env) (evdref : Evd.evar_map ref) (term : E
     | Constr.Float n -> term
     | Constr.Var name -> term
     | Constr.Meta i -> term
-    | Constr.Evar (ekey, terms) -> mkEvar (ekey, (List.map (r env) terms))
+    | Constr.Evar (ekey, terms) -> mkEvar (ekey, (SList.Skip.map (r env) terms))
     | Constr.Sort s -> term
     | Constr.Cast (expr, kind, ty) -> mkCast (r env expr, kind, r env ty)
     | Constr.Prod (name, ty, body) ->
@@ -265,7 +265,7 @@ let delete_univ (env : Environ.env) (evdref : Evd.evar_map ref) (term : EConstr.
     | Constr.Float n -> mkFloat n
     | Constr.Var name -> mkVar name
     | Constr.Meta i -> mkMeta i
-    | Constr.Evar (ekey, terms) -> mkEvar (ekey, (List.map recfun terms))
+    | Constr.Evar (ekey, terms) -> mkEvar (ekey, (SList.Skip.map recfun terms))
     | Constr.Sort s ->
         (match ESorts.kind !evdref s with
         | Sorts.Prop | Sorts.SProp | Sorts.Set -> term

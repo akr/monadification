@@ -473,18 +473,18 @@ Proof.
   f_equal.
     rewrite /buildD1.
     f_equal.
-    rewrite -/n -addn1 iota_add map_rev map_cat rev_cat /=.
+    rewrite -/n -addn1 iotaD map_rev map_cat rev_cat /=.
     by rewrite add0n -divnMA [sz2 * k]mulnC -/sz1.
   rewrite /buildD2.
   f_equal.
-  rewrite -/n -addn1 iota_add map_rev map_cat rev_cat /=.
+  rewrite -/n -addn1 iotaD map_rev map_cat rev_cat /=.
   rewrite add0n -divnMA [sz2 * k]mulnC -/sz1.
   f_equal.
   rewrite /rev.
   rewrite -catrev_catl.
   f_equal.
   rewrite {2}[n %/ sz2](divn_eq (n %/ sz2) k).
-  rewrite iota_add map_cat.
+  rewrite iotaD map_cat.
   rewrite -divnMA [sz2 * k]mulnC -/sz1.
   rewrite add0n.
   f_equal.

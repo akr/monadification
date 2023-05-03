@@ -152,7 +152,7 @@ Proof.
       apply eq_map => j /=.
       by rewrite add0n -/sz1 -addnA bcount_adjacent.
     by rewrite mul0n bcount_empty addn0.
-  rewrite mulSn iota_add add0n map_cat catrev_catl.
+  rewrite mulSn iotaD add0n map_cat catrev_catl.
   congr (catrev _ _).
     rewrite -{6}[k]addn0 iotaDl -map_comp.
     apply eq_map => j /=.
@@ -191,14 +191,14 @@ Proof.
   rewrite BuildDir2Val -/n add0n add0n.
   rewrite /catDs /emptyD /pushD -/n2 -/n1 -/sz1.
   congr (_, _).
-    by rewrite /buildD1 map_rev -addn1 iota_add add0n map_cat rev_cat.
+    by rewrite /buildD1 map_rev -addn1 iotaD add0n map_cat rev_cat.
   rewrite /buildD2.
   congr (darr w2 _).
-  rewrite map_rev -addn1 iota_add add0n map_cat rev_cat /= -/n1.
+  rewrite map_rev -addn1 iotaD add0n map_cat rev_cat /= -/n1.
   congr (_ :: _).
   rewrite -catrev_catl /rev.
   congr (catrev _ _).
-  rewrite {2}(divn_eq n2 k) -/n1 iota_add map_cat.
+  rewrite {2}(divn_eq n2 k) -/n1 iotaD map_cat.
   congr (_ ++ _).
   rewrite add0n -[n1 * k]addn0 iotaDl -map_comp.
   apply eq_in_map => j.
