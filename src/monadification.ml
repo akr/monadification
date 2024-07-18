@@ -170,8 +170,8 @@ let deanonymize_term (env : Environ.env) (evdref : Evd.evar_map ref) (term : ECo
     | Constr.Ind (ind, u) -> term
     | Constr.Construct (cstr, u) -> term
     | Constr.Case (ci,u,pms,p,iv,c,bl) ->
-        let (ci, tyf, iv, expr, brs) = EConstr.expand_case env !evdref (ci,u,pms,p,iv,c,bl) in
-        mkCase (EConstr.contract_case env !evdref (ci, r env tyf, iv, r env expr, Array.map (r env) brs))
+        let (ci, (tyf, sr), iv, expr, brs) = EConstr.expand_case env !evdref (ci,u,pms,p,iv,c,bl) in
+        mkCase (EConstr.contract_case env !evdref (ci, (r env tyf, sr), iv, r env expr, Array.map (r env) brs))
     | Constr.Fix ((ia, i), (nameary, tyary, funary)) ->
         let env2 = push_rec_types (nameary, tyary, funary) env !evdref in
         let nameary2 = array_map2 (fun ty name -> Context.map_annot (Namegen.named_hd env !evdref ty) name) tyary nameary in
@@ -180,8 +180,8 @@ let deanonymize_term (env : Environ.env) (evdref : Evd.evar_map ref) (term : ECo
         let env2 = push_rec_types (nameary, tyary, funary) env !evdref in
         let nameary2 = array_map2 (fun ty name -> Context.map_annot (Namegen.named_hd env !evdref ty) name) tyary nameary in
         mkCoFix (i, (nameary2, Array.map (r env) tyary, Array.map (r env2) funary))
-    | Constr.Proj (proj, expr) ->
-        mkProj (proj, r env expr)
+    | Constr.Proj (proj, sr, expr) ->
+        mkProj (proj, sr, r env expr)
     | Constr.Array (u,t,def,ty) -> mkArray (u, Array.map (r env) t, r env def, r env ty)
   in
   r env term
@@ -235,16 +235,16 @@ let term_explicit_prod (env : Environ.env) (evdref : Evd.evar_map ref) (term : E
     | Constr.Ind (ind, u) -> term
     | Constr.Construct (cstr, u) -> term
     | Constr.Case (ci,u,pms,p,iv,c,bl) ->
-        let (ci, tyf, iv, expr, brs) = EConstr.expand_case env !evdref (ci,u,pms,p,iv,c,bl) in
-        mkCase (EConstr.contract_case env !evdref (ci, r env tyf, iv, r env expr, Array.map (r env) brs))
+        let (ci, (tyf, sr), iv, expr, brs) = EConstr.expand_case env !evdref (ci,u,pms,p,iv,c,bl) in
+        mkCase (EConstr.contract_case env !evdref (ci, (r env tyf, sr), iv, r env expr, Array.map (r env) brs))
     | Constr.Fix ((ia, i), (nameary, tyary, funary)) ->
         let env2 = push_rec_types (nameary, tyary, funary) env !evdref in
         mkFix ((ia, i), (nameary, Array.map (r env) tyary, Array.map (r env2) funary))
     | Constr.CoFix (i, (nameary, tyary, funary)) ->
         let env2 = push_rec_types (nameary, tyary, funary) env !evdref in
         mkCoFix (i, (nameary, Array.map (r env) tyary, Array.map (r env2) funary))
-    | Constr.Proj (proj, expr) ->
-        mkProj (proj, r env expr)
+    | Constr.Proj (proj, sr, expr) ->
+        mkProj (proj, sr, r env expr)
     | Constr.Array (u,t,def,ty) -> mkArray (u, Array.map (r env) t, r env def, r env ty)
   in
   r env term
@@ -280,14 +280,14 @@ let delete_univ (env : Environ.env) (evdref : Evd.evar_map ref) (term : EConstr.
     | Constr.Ind (ind, u) -> mkIndU (ind, EInstance.empty)
     | Constr.Construct (cstr, u) -> mkConstructU (cstr, EInstance.empty)
     | Constr.Case (ci,u,pms,p,iv,c,bl) ->
-        let (ci, tyf, iv, expr, brs) = EConstr.expand_case env !evdref (ci,u,pms,p,iv,c,bl) in
-        mkCase (EConstr.contract_case env !evdref (ci, recfun tyf, iv, recfun expr, Array.map recfun brs))
+        let (ci, (tyf, sr), iv, expr, brs) = EConstr.expand_case env !evdref (ci,u,pms,p,iv,c,bl) in
+        mkCase (EConstr.contract_case env !evdref (ci, (recfun tyf, sr), iv, recfun expr, Array.map recfun brs))
     | Constr.Fix ((ia, i), (nameary, tyary, funary)) ->
         mkFix ((ia, i), (nameary, Array.map recfun tyary, Array.map recfun funary))
     | Constr.CoFix (i, (nameary, tyary, funary)) ->
         mkCoFix (i, (nameary, Array.map recfun tyary, Array.map recfun funary))
-    | Constr.Proj (proj, expr) ->
-        mkProj (proj, recfun expr)
+    | Constr.Proj (proj, sr, expr) ->
+        mkProj (proj, sr, recfun expr)
     | Constr.Array (u,t,def,ty) -> mkArray (EInstance.empty, Array.map recfun t, recfun def, recfun ty)
   in
   (*Feedback.msg_debug (str "delete_univ:1:" ++ Printer.pr_econstr_env env !evdref term);*)
@@ -652,7 +652,7 @@ let make_purelevel_positive ((mctx, mterm) : (Name.t Context.binder_annot * mona
   else
     (mctx, mterm)
 
-let rec mona_const_ref (env : Environ.env) (evdref : Evd.evar_map ref) ((cnst, u) : Names.Constant.t Univ.puniverses) : monadic =
+let rec mona_const_ref (env : Environ.env) (evdref : Evd.evar_map ref) ((cnst, u) : Names.Constant.t UVars.puniverses) : monadic =
   (*Feedback.msg_debug (str "mona_const_ref:1:" ++ Printer.pr_constant env cnst);*)
   let key = ConstRef cnst in
   if List.mem_assoc key !mona_record_ref then
@@ -741,7 +741,7 @@ and mona_pure_dependencies_p (env : Environ.env) (evdref : Evd.evar_map ref) (te
     | Constr.CoFix (i, (nameary, tyary, funary)) ->
         let env2 = push_rec_types (nameary, tyary, funary) env !evdref in
         Array.iter (recfun env2) funary
-    | Constr.Proj (proj, expr) ->
+    | Constr.Proj (proj, sr, expr) ->
         recfun env expr
     | Constr.Array (u,t,def,ty) ->
         (Array.iter (recfun env) t;
@@ -862,7 +862,7 @@ and mona_head_internal (env : Environ.env) (evdref : Evd.evar_map ref) (rel_pure
         make_purelevel_positive (List.concat [mctx3; [name, m1]; mctx1], m3)
 
     | Constr.Case (ci,u,pms,p,iv,c,bl) ->
-        let (ci, tyf, iv, expr, brs) = EConstr.expand_case env !evdref (ci,u,pms,p,iv,c,bl) in
+        let (ci, (tyf, sr), iv, expr, brs) = EConstr.expand_case env !evdref (ci,u,pms,p,iv,c,bl) in
         let (name, exprty, bodyty) = destLambda !evdref tyf in
 
         (*Feedback.msg_debug (str "mona_head:case:" ++ Printer.pr_econstr mtyf);*)
@@ -905,7 +905,7 @@ and mona_head_internal (env : Environ.env) (evdref : Evd.evar_map ref) (rel_pure
           ((Context.anonR, mexpr) :: mctx_expr,
            (purelevel,
             Vars.lift (n+1) termty,
-            mkCase (EConstr.contract_case env !evdref (ci, Vars.lift (n+1) mtyf, iv, mkRel 1, (Array.map (Vars.lift (n+1)) brs')))))
+            mkCase (EConstr.contract_case env !evdref (ci, (Vars.lift (n+1) mtyf, sr), iv, mkRel 1, (Array.map (Vars.lift (n+1)) brs')))))
 
     | Constr.Lambda (name, namety, body) ->
         let decl = Context.Rel.Declaration.LocalAssum (name, namety) in
@@ -950,7 +950,7 @@ let monadification_single (libref : Libnames.qualid) : unit =
   let evdref = ref (Evd.from_env env) in
   match gref with
   | ConstRef cnst ->
-      let _ = mona_const_ref env evdref (Univ.in_punivs cnst) in
+      let _ = mona_const_ref env evdref (UVars.in_punivs cnst) in
       ()
   | ConstructRef cstr ->
       let _ = mona_construct_ref env evdref (cstr, EInstance.empty) in

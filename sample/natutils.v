@@ -1,7 +1,7 @@
 From mathcomp Require Import ssreflect ssrbool eqtype ssrnat.
 From mathcomp Require Import div prime.
 
-Require Coq.Numbers.Natural.Peano.NPeano.
+Require Coq.Arith.PeanoNat.
 
 Section NatUtils.
 
@@ -235,7 +235,7 @@ Lemma log2_trunc_log n : Nat.log2 n = log2 n.
 Proof.
   case: n => [|n]; first by [].
   have /andP [Hcoq1 Hcoq2] : 2 ^ (Nat.log2 n.+1) <= n.+1 < 2 ^ (Nat.log2 n.+1).+1.
-    case: (NPeano.log2_spec n.+1); first by apply/ltP.
+    case: (PeanoNat.Nat.log2_spec n.+1); first by apply/ltP.
     by rewrite !pow_expn => /leP -> /ltP ->.
   have /andP [Hssr1 Hssr2] : 2 ^ (log2 n.+1) <= n.+1 < 2 ^ (log2 n.+1).+1.
     by apply trunc_log_bounds.
@@ -248,14 +248,14 @@ Qed.
 Lemma log2_pow2 a : log2 (2 ^ a) = a.
 Proof.
   rewrite -log2_trunc_log -pow_expn.
-  by rewrite NPeano.Nat.log2_pow2; last apply/leP.
+  by rewrite PeanoNat.Nat.log2_pow2; last apply/leP.
 Qed.
 
 Lemma log2_pred_pow2 a : log2 (2 ^ a).-1 = a.-1.
 Proof.
   case: a => [|a]; first by [].
   rewrite -log2_trunc_log -pow_expn.
-  by rewrite NPeano.Nat.log2_pred_pow2; last apply/ltP.
+  by rewrite PeanoNat.Nat.log2_pred_pow2; last apply/ltP.
 Qed.
 
 Lemma log2_1 : log2 1 = 0.
@@ -267,7 +267,7 @@ Proof. by []. Qed.
 Lemma log2_pos a : 1 < a -> 0 < log2 a.
 Proof.
   rewrite -log2_trunc_log => H.
-  by apply/ltP/NPeano.Nat.log2_pos/ltP.
+  by apply/ltP/PeanoNat.Nat.log2_pos/ltP.
 Qed.
 
 Lemma iff_eq (a b : bool) : (a <-> b) -> a = b.
@@ -279,7 +279,7 @@ Qed.
 Lemma log2_null a : (log2 a == 0) = (a <= 1).
 Proof.
   apply iff_eq.
-  case: (NPeano.Nat.log2_null a).
+  case: (PeanoNat.Nat.log2_null a).
   rewrite log2_trunc_log => Hcoq1 Hcoq2.
   split => H.
     by apply/leP/Hcoq1/eqP.
@@ -290,20 +290,20 @@ Lemma log2_le_mono a b : a <= b -> log2 a <= log2 b.
 Proof.
   move=> H.
   rewrite -2!log2_trunc_log.
-  by apply/leP/NPeano.Nat.log2_le_mono/leP.
+  by apply/leP/PeanoNat.Nat.log2_le_mono/leP.
 Qed.
 
 Lemma log2_lt_cancel a b : log2 a < log2 b -> a < b.
 Proof.
   move=> H.
-  apply/ltP/NPeano.Nat.log2_lt_cancel/ltP.
+  apply/ltP/PeanoNat.Nat.log2_lt_cancel/ltP.
   by rewrite 2!log2_trunc_log.
 Qed.
 
 Lemma log2_le_pow2 a b : 0 < a -> (2 ^ b <= a) = (b <= log2 a).
 Proof.
   move=> Ha.
-  case: (NPeano.Nat.log2_le_pow2 a b); first by apply/ltP.
+  case: (PeanoNat.Nat.log2_le_pow2 a b); first by apply/ltP.
   rewrite pow_expn log2_trunc_log => Hcoq1 Hcoq2.
   apply iff_eq.
   split => H.
@@ -327,7 +327,7 @@ Qed.
 Lemma log2_lt_pow2 a b : 0 < a -> (a < 2 ^ b) = (log2 a < b).
 Proof.
   move=> Ha.
-  case: (NPeano.Nat.log2_lt_pow2 a b); first by apply/ltP.
+  case: (PeanoNat.Nat.log2_lt_pow2 a b); first by apply/ltP.
   rewrite pow_expn log2_trunc_log => Hcoq1 Hcoq2.
   apply iff_eq.
   split => H.
@@ -357,68 +357,68 @@ Lemma log2_lt_lin a : 0 < a -> log2 a < a.
 Proof.
   move=> H.
   rewrite -log2_trunc_log.
-  by apply/ltP/NPeano.Nat.log2_lt_lin/ltP.
+  by apply/ltP/PeanoNat.Nat.log2_lt_lin/ltP.
 Qed.
 
 Lemma log2_le_lin a : 0 <= a -> log2 a <= a.
 Proof.
   move=> H.
   rewrite -log2_trunc_log.
-  by apply/leP/NPeano.Nat.log2_le_lin/leP.
+  by apply/leP/PeanoNat.Nat.log2_le_lin/leP.
 Qed.
 
 Lemma log2_mul_below a b : 0 < a -> 0 < b -> log2 a + log2 b <= log2 (a * b).
 Proof.
   move=> Ha Hb.
   rewrite -3!log2_trunc_log addnE mulnE.
-  by apply/leP/NPeano.Nat.log2_mul_below; apply /ltP.
+  by apply/leP/PeanoNat.Nat.log2_mul_below; apply /ltP.
 Qed.
 
 Lemma log2_mul_above a b : 0 <= a -> 0 <= b -> log2 (a * b) <= (log2 a + log2 b).+1.
 Proof.
   move=> Ha Hb.
   rewrite -3!log2_trunc_log -addn1 addnE mulnE.
-  by apply/leP/NPeano.Nat.log2_mul_above; apply/leP.
+  by apply/leP/PeanoNat.Nat.log2_mul_above; apply/leP.
 Qed.
 
 Lemma log2_mul_pow2 a b : 0 < a -> 0 <= b -> log2 (a * 2 ^ b) = b + log2 a.
 Proof.
   move=> Ha Hb.
   rewrite -2!log2_trunc_log -pow_expn addnE mulnE.
-  by apply NPeano.Nat.log2_mul_pow2; [apply/ltP|apply/leP].
+  by apply PeanoNat.Nat.log2_mul_pow2; [apply/ltP|apply/leP].
 Qed.
 
 Lemma log2_double a : 0 < a -> log2 (a.*2) = (log2 a).+1.
 Proof.
   move=> Ha.
   rewrite -2!log2_trunc_log -mul2n.
-  by apply/NPeano.Nat.log2_double/ltP.
+  by apply/PeanoNat.Nat.log2_double/ltP.
 Qed.
 
 Lemma log2_same a b : 0 < a -> 0 < b -> log2 a = log2 b -> a < b.*2.
 Proof.
   move=> Ha Hb.
   rewrite -2!log2_trunc_log -mul2n => H.
-  by apply/ltP/NPeano.Nat.log2_same => //; apply/ltP.
+  by apply/ltP/PeanoNat.Nat.log2_same => //; apply/ltP.
 Qed.
 
 Lemma log2_succ_le a : log2 a.+1 <= (log2 a).+1.
 Proof.
   rewrite -2!log2_trunc_log.
-  by apply/leP/NPeano.Nat.log2_succ_le.
+  by apply/leP/PeanoNat.Nat.log2_succ_le.
 Qed.
 
 Lemma log2_succ_or a : (log2 a.+1 == (log2 a).+1) || (log2 a.+1 == log2 a).
 Proof.
   rewrite -2!log2_trunc_log.
   apply/orP.
-  by case (NPeano.Nat.log2_succ_or a) => ->; [left|right].
+  by case (PeanoNat.Nat.log2_succ_or a) => ->; [left|right].
 Qed.
 
 Lemma log2_eq_succ_is_pow2 a : log2 a.+1 = (log2 a).+1 -> exists b, S a = 2 ^ b.
 Proof.
   rewrite -2!log2_trunc_log => H.
-  case (NPeano.Nat.log2_eq_succ_is_pow2 a H) => b' H'.
+  case (PeanoNat.Nat.log2_eq_succ_is_pow2 a H) => b' H'.
   exists b'.
   by rewrite H' pow_expn.
 Qed.
@@ -428,7 +428,7 @@ Lemma log2_eq_succ_iff_pow2 a : 0 < a ->
 Proof.
   move/ltP => Ha.
   rewrite -2!log2_trunc_log.
-  case (NPeano.Nat.log2_eq_succ_iff_pow2 a Ha) => H1 H2.
+  case (PeanoNat.Nat.log2_eq_succ_iff_pow2 a Ha) => H1 H2.
   split => [H|[b' H]].
     case (H1 H) => b' H'.
     exists b'.
@@ -442,21 +442,21 @@ Lemma log2_succ_double a : 0 < a -> log2 (a.*2.+1) = (log2 a).+1.
 Proof.
   move=> Ha.
   rewrite -2!log2_trunc_log -mul2n -addn1.
-  by apply/NPeano.Nat.log2_succ_double/ltP.
+  by apply/PeanoNat.Nat.log2_succ_double/ltP.
 Qed.
 
 Lemma log2_add_le a b : a != 1 -> b != 1 -> log2 (a+b) <= log2 a + log2 b.
 Proof.
   move=> Ha Hb.
   rewrite -3!log2_trunc_log.
-  by apply/leP/NPeano.Nat.log2_add_le; apply/eqP.
+  by apply/leP/PeanoNat.Nat.log2_add_le; apply/eqP.
 Qed.
 
 Lemma add_log2_lt a b : 0 < a -> 0 < b -> log2 a + log2 b < 2 * log2 (a+b).
 Proof.
   move=> Ha Hb.
   rewrite -3!log2_trunc_log.
-  by apply/ltP/NPeano.Nat.add_log2_lt; apply/ltP.
+  by apply/ltP/PeanoNat.Nat.add_log2_lt; apply/ltP.
 Qed.
 
 (* bitlen *)

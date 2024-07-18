@@ -105,7 +105,7 @@ val make_purelevel_positive :
   (Names.Name.t Context.binder_annot * monadic) list * monadic
 val mona_const_ref :
   Environ.env ->
-  Evd.evar_map ref -> Names.Constant.t Univ.puniverses -> monadic
+  Evd.evar_map ref -> Names.Constant.t UVars.puniverses -> monadic
 val mona_const_ref_known :
   Names.Constant.t EConstr.puniverses -> bool * monadic
 val mona_pure_dependencies_p :
