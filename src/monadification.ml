@@ -26,7 +26,8 @@ open EConstr
 
 let opt_verbose = ref false
 let _ = declare_bool_option
-        { optdepr  = false;
+        { optstage = Summary.Stage.Interp;
+          optdepr  = None;
           optkey   = ["Monadification";"Verbose"];
           optread  = (fun () -> !opt_verbose);
           optwrite = (:=) opt_verbose }
@@ -269,15 +270,15 @@ let delete_univ (env : Environ.env) (evdref : Evd.evar_map ref) (term : EConstr.
     | Constr.Sort s ->
         (match ESorts.kind !evdref s with
         | Sorts.Prop | Sorts.SProp | Sorts.Set -> term
-        | Sorts.Type _ -> e_new_Type evdref)
+        | Sorts.Type _ | QSort (_, _) -> e_new_Type evdref)
     | Constr.Cast (expr, kind, ty) -> mkCast (recfun expr, kind, recfun ty)
     | Constr.Prod (name, ty, body) -> mkProd (name, recfun ty, recfun body)
     | Constr.Lambda (name, ty, body) -> mkLambda (name, recfun ty, recfun body)
     | Constr.LetIn (name, expr, ty, body) -> mkLetIn (name, recfun expr, recfun ty, recfun body)
     | Constr.App (f, argsary) -> mkApp (recfun f, Array.map recfun argsary)
-    | Constr.Const (cnst, u) -> mkConst cnst
-    | Constr.Ind (ind, u) -> mkInd ind
-    | Constr.Construct (cstr, u) -> mkConstruct cstr
+    | Constr.Const (cnst, u) -> mkConstU (cnst, EInstance.empty)
+    | Constr.Ind (ind, u) -> mkIndU (ind, EInstance.empty)
+    | Constr.Construct (cstr, u) -> mkConstructU (cstr, EInstance.empty)
     | Constr.Case (ci,u,pms,p,iv,c,bl) ->
         let (ci, tyf, iv, expr, brs) = EConstr.expand_case env !evdref (ci,u,pms,p,iv,c,bl) in
         mkCase (EConstr.contract_case env !evdref (ci, recfun tyf, iv, recfun expr, Array.map recfun brs))
@@ -331,8 +332,8 @@ let mona_action_add (libref : Libnames.qualid) (constr : Constrexpr.constr_expr)
   let (term : EConstr.constr), _ = Constrintern.interp_constr env !evdref constr in
   let pureterm =
     match gref with
-    | ConstRef cnst -> mkConst cnst
-    | ConstructRef cstr -> mkConstruct cstr
+    | ConstRef cnst -> mkConstU (cnst, EInstance.empty)
+    | ConstructRef cstr -> mkConstructU (cstr, EInstance.empty)
     | _ -> user_err (Pp.str "unexpected gref")
   in
   let termty = type_of env evdref pureterm in
@@ -526,8 +527,8 @@ let mona_pure_def (gref : GlobRef.t) : monadic =
   let evdref = ref (Evd.from_env env) in
   let term =
     match gref with
-    | ConstRef cnst -> mkConst cnst
-    | ConstructRef cstr -> mkConstruct cstr
+    | ConstRef cnst -> mkConstU (cnst, EInstance.empty)
+    | ConstructRef cstr -> mkConstructU (cstr, EInstance.empty)
     | _ -> user_err (Pp.str "unexpected gref")
   in
   let termty = type_of env evdref term in
@@ -689,7 +690,7 @@ let rec mona_const_ref (env : Environ.env) (evdref : Evd.evar_map ref) ((cnst, u
       (*Feedback.msg_debug (str "mona_const_ref:3:" ++ Id.print id);*)
       let constant = define_constant id term in
       (*Feedback.msg_debug (str "mona_const_ref:4:" ++ Id.print id);*)
-      let v = mkConst constant in
+      let v = mkConstU (constant, EInstance.empty) in
       let v = (purelevel, termty, v) in
       mona_record_ref := (key, (true, v)) :: !mona_record_ref;
       Feedback.msg_info (hv 0 (str "monadification end:" ++ spc () ++ Printer.pr_constant env cnst ++ spc () ++ str "=>" ++ spc () ++ Id.print id ++

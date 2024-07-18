@@ -48,7 +48,10 @@ Monadification size.
   required to monadify them but it means we can not use Equality.type and
   lemmas related to Equality.type.
 *)
-Monadify Pure nat_eqType seq_eqType.
+
+(* Monadify Pure nat_eqType seq_eqType. *)
+Monadify Pure Datatypes_nat__canonical__eqtype_Equality Datatypes_list__canonical__eqtype_Equality.
+
 
 Monadification nilp.
 Monadification ohead.

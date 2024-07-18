@@ -20,9 +20,8 @@ DECLARE PLUGIN "coq-monadification.plugin"
 
 {
 
-let () = Mltop.add_known_plugin (fun () ->
-  Feedback.msg_info Pp.(str"monadification 0.1"))
-  "coq-monadification.plugin"
+let () = Mltop.add_init_function "coq-monadification.plugin"
+  (fun () -> Feedback.msg_info Pp.(str"monadification 0.1"))
 ;;
 
 
