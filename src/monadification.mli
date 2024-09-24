@@ -23,7 +23,7 @@ val pr_explain_monadic : Environ.env -> Evd.evar_map -> monadic -> Pp.t
 val monadic_is_pure : Evd.evar_map -> monadic -> bool
 val monadic_constant_id : Names.Constant.t -> Names.Id.t
 val push_rec_types :
-  (EConstr.t, EConstr.t) Constr.prec_declaration ->
+  (EConstr.t, EConstr.t, EConstr.ERelevance.t) Constr.prec_declaration ->
   Environ.env -> Evd.evar_map -> Environ.env
 val deanonymize_term :
   Environ.env -> Evd.evar_map ref -> EConstr.t -> EConstr.t
@@ -75,15 +75,15 @@ val beta_app : Evd.evar_map -> EConstr.t -> EConstr.t -> EConstr.t
 val mona_bind2_internal :
   Environ.env ->
   Evd.evar_map ->
-  Names.Name.t Context.binder_annot -> monadic -> monadic -> monadic
+  Names.Name.t EConstr.binder_annot -> monadic -> monadic -> monadic
 val mona_bind2 :
   Environ.env ->
   Evd.evar_map ->
-  Names.Name.t Context.binder_annot -> monadic -> monadic -> monadic
+  Names.Name.t EConstr.binder_annot -> monadic -> monadic -> monadic
 val bind_mctx :
   Environ.env ->
   Evd.evar_map ->
-  (Names.Name.t Context.binder_annot * monadic) list -> monadic -> monadic
+  (Names.Name.t EConstr.binder_annot * monadic) list -> monadic -> monadic
 val mona_construct_ref :
   Environ.env ->
   Evd.evar_map ref -> Names.constructor * EConstr.EInstance.t -> monadic
@@ -92,17 +92,17 @@ val mona_construct_ref_known :
 val pr_head :
   Environ.env ->
   Evd.evar_map ref ->
-  (Names.Name.t Context.binder_annot * monadic) list ->
+  (Names.Name.t EConstr.binder_annot * monadic) list ->
   monadic -> Pp.t list * Pp.t
 val feedback_env : string -> Environ.env -> unit
 val feedback_head :
   string ->
   Environ.env ->
   Evd.evar_map ref ->
-  (Names.Name.t Context.binder_annot * monadic) list -> monadic -> unit
+  (Names.Name.t EConstr.binder_annot * monadic) list -> monadic -> unit
 val make_purelevel_positive :
-  (Names.Name.t Context.binder_annot * monadic) list * monadic ->
-  (Names.Name.t Context.binder_annot * monadic) list * monadic
+  (Names.Name.t EConstr.binder_annot * monadic) list * monadic ->
+  (Names.Name.t EConstr.binder_annot * monadic) list * monadic
 val mona_const_ref :
   Environ.env ->
   Evd.evar_map ref -> Names.Constant.t UVars.puniverses -> monadic
@@ -114,12 +114,12 @@ val mona_head :
   Environ.env ->
   Evd.evar_map ref ->
   int list ->
-  EConstr.t -> (Names.Name.t Context.binder_annot * monadic) list * monadic
+  EConstr.t -> (Names.Name.t EConstr.binder_annot * monadic) list * monadic
 val mona_head_internal :
   Environ.env ->
   Evd.evar_map ref ->
   int list ->
-  EConstr.t -> (Names.Name.t Context.binder_annot * monadic) list * monadic
+  EConstr.t -> (Names.Name.t EConstr.binder_annot * monadic) list * monadic
 val mona_tail :
   Environ.env -> Evd.evar_map ref -> int list -> EConstr.t -> monadic
 val mona_tail_internal :
